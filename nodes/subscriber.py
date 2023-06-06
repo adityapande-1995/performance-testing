@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 
+from collections import defaultdict
 import rclpy
 from rclpy.node import Node
 
 from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import Image
 
+from collections import defaultdict
 import numpy as np
 import sys
 import time
 
 BUFFER_SIZE = 50
 
-def get_statistics(msg_info):
+def get_statistics(msg_info, topic):
     msg_info = np.array(msg_info)
     latencies = msg_info[:,0]
     report = "\n------------------" +\
-    "\nFor topic /k4a/points :" +\
+    "\nFor topic " + topic +\
     "\nLatency mean(ms): " + str(round(np.mean(latencies) * 1000, 3)) +\
     "\nLatency minimum(ms): " + str(round(min(latencies) * 1000, 3)) +\
     "\nLatency maximum(ms): " + str(round(max(latencies) * 1000, 3)) +\
@@ -29,31 +32,37 @@ class MinimalSubscriber(Node):
 
     def __init__(self):
         super().__init__('minimal_subscriber')
-        self.pointcloud_subscription = self.create_subscription(
-            PointCloud2,
-            '/k4a/points',
-            self.pointcloud_callback,
-            10)
-        self.pointcloud_buffer = []
 
-    def pointcloud_callback(self, msg):
-        if len(self.pointcloud_buffer) == BUFFER_SIZE:
-            return
+        self.data_buffer = defaultdict(list)
+        topics_and_types = [('/k4a/points', PointCloud2), ('/k4a/color/image', Image), ('/k4a/depth/image', Image)]
+        self.subscribers = []
 
-        sec = str(msg.header.stamp.sec)
-        nsec = str(msg.header.stamp.nanosec)
-        src_time = float(sec + "." + nsec)
-        current_time = float(time.time())
-        latency = current_time - src_time
+        for topic, type in topics_and_types :
+            self.subscribers.append(self.create_subscription(
+                type,
+                topic,
+                self.msg_callback_generator(topic),
+                10))
 
-        if latency > 0 and len(self.pointcloud_buffer) < BUFFER_SIZE:
-            self.pointcloud_buffer.append([latency, sys.getsizeof(msg), current_time])
-        
-        if latency < 0 :
-            self.get_logger().info("Timing mismatch in /k4a/points, dropping msg")
+    def msg_callback_generator(self, topic):
+        def msg_callback(msg):
+            if len(self.data_buffer[topic]) == BUFFER_SIZE:
+                return
 
-        if len(self.pointcloud_buffer) == BUFFER_SIZE :
-            self.get_logger().info(get_statistics((self.pointcloud_buffer)))
+            src_time = float(str(msg.header.stamp.sec) + "." + str(msg.header.stamp.nanosec))
+            current_time = float(time.time())
+            latency = current_time - src_time
+
+            if latency > 0 and len(self.data_buffer[topic]) < BUFFER_SIZE:
+                self.data_buffer[topic].append([latency, sys.getsizeof(msg), current_time])
+            
+            if latency < 0 :
+                self.get_logger().info("Timing mismatch in " + topic + " , dropping msg")
+
+            if len(self.data_buffer[topic]) == BUFFER_SIZE :
+                self.get_logger().info(get_statistics((self.data_buffer[topic]), topic))
+
+        return msg_callback
 
 def main(args=None):
     rclpy.init(args=args)
