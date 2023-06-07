@@ -3,18 +3,21 @@
 from collections import defaultdict
 import rclpy
 from rclpy.node import Node
+from rclpy.serialization import serialize_message
 
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import Image
+from tf2_msgs.msg import TFMessage
+from sensor_msgs.msg import CameraInfo
 
 from collections import defaultdict
 import numpy as np
 import sys
 import time
 
-BUFFER_SIZE = 50
+BUFFER_SIZE = 100
 
-def get_statistics(msg_info, topic):
+def get_statistics(msg_info, msg_size, topic):
     msg_info = np.array(msg_info)
     latencies = msg_info[:,0]
     report = "\n------------------" +\
@@ -23,8 +26,8 @@ def get_statistics(msg_info, topic):
     "\nLatency minimum(ms): " + str(round(min(latencies) * 1000, 3)) +\
     "\nLatency maximum(ms): " + str(round(max(latencies) * 1000, 3)) +\
     "\nLatency std dev(ms): " + str(round(np.std(latencies) * 1000, 3)) +\
-    "\nAverage msg size (bytes): " + str(np.mean(msg_info[:,1])) +\
-    "\nThroughput (bytes/sec): " + str(round(np.sum(msg_info[:,1])/(msg_info[-1,2] - msg_info[0,2]), 3)) +\
+    "\nMsg size (bytes): " + str(msg_size) +\
+    "\nThroughput (MB/sec): " + str(round((msg_size * len(latencies))/((msg_info[-1,1] - msg_info[0,1]) * 1024 *1024), 3)) +\
     "\n------------------"
     return report
 
@@ -34,7 +37,9 @@ class MinimalSubscriber(Node):
         super().__init__('minimal_subscriber')
 
         self.data_buffer = defaultdict(list)
-        topics_and_types = [('/k4a/points', PointCloud2), ('/k4a/color/image', Image), ('/k4a/depth/image', Image)]
+        self.msg_sizes = defaultdict(int)
+        topics_and_types = [('/k4a/points', PointCloud2), ('/k4a/color/image', Image), ('/k4a/depth/image', Image),
+                            ('/k4a/color/camera_info', CameraInfo), ('/k4a/depth/camera_info', CameraInfo)]
         self.subscribers = []
 
         for topic, type in topics_and_types :
@@ -53,14 +58,18 @@ class MinimalSubscriber(Node):
             current_time = float(time.time())
             latency = current_time - src_time
 
+            if self.msg_sizes[topic] == 0:
+                bytes = serialize_message(msg)
+                self.msg_sizes[topic] = sys.getsizeof(bytes)
+
             if latency > 0 and len(self.data_buffer[topic]) < BUFFER_SIZE:
-                self.data_buffer[topic].append([latency, sys.getsizeof(msg), current_time])
-            
+                self.data_buffer[topic].append([latency, current_time])
+ 
             if latency < 0 :
                 self.get_logger().info("Timing mismatch in " + topic + " , dropping msg")
 
             if len(self.data_buffer[topic]) == BUFFER_SIZE :
-                self.get_logger().info(get_statistics((self.data_buffer[topic]), topic))
+                self.get_logger().info(get_statistics((self.data_buffer[topic]), self.msg_sizes[topic] , topic))
 
         return msg_callback
 
