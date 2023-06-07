@@ -16,10 +16,15 @@ import sys
 import time
 
 BUFFER_SIZE = 100
+THROUGHPUT = 0
 
 def get_statistics(msg_info, msg_size, topic):
+    global THROUGHPUT
     msg_info = np.array(msg_info)
-    latencies = msg_info[:,0]
+    latencies = msg_info[1:,0]
+    current_throughput = round((msg_size * len(latencies))/((msg_info[-1,1] - msg_info[1,1]) * 1024 *1024), 3)
+    THROUGHPUT += current_throughput
+
     report = "\n------------------" +\
     "\nFor topic " + topic +\
     "\nLatency mean(ms): " + str(round(np.mean(latencies) * 1000, 3)) +\
@@ -27,7 +32,8 @@ def get_statistics(msg_info, msg_size, topic):
     "\nLatency maximum(ms): " + str(round(max(latencies) * 1000, 3)) +\
     "\nLatency std dev(ms): " + str(round(np.std(latencies) * 1000, 3)) +\
     "\nMsg size (bytes): " + str(msg_size) +\
-    "\nThroughput (MB/sec): " + str(round((msg_size * len(latencies))/((msg_info[-1,1] - msg_info[0,1]) * 1024 *1024), 3)) +\
+    "\nThroughput (MB/sec): " + str(current_throughput) +\
+    "\nCumulative throughput (MB/sec): " + str(THROUGHPUT) +\
     "\n------------------"
     return report
 
