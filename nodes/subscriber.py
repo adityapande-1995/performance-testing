@@ -21,6 +21,8 @@ THROUGHPUT = 0
 def get_statistics(msg_info, msg_size, topic):
     global THROUGHPUT
     msg_info = np.array(msg_info)
+    # Ignore the first entry, as we serialize the msg to get its size when the callback is run the first time.
+    # This makes the callback run much longer.
     latencies = msg_info[1:,0]
     current_throughput = round((msg_size * len(latencies))/((msg_info[-1,1] - msg_info[1,1]) * 1024 *1024), 3)
     THROUGHPUT += current_throughput
@@ -40,7 +42,7 @@ def get_statistics(msg_info, msg_size, topic):
 class MinimalSubscriber(Node):
 
     def __init__(self):
-        super().__init__('minimal_subscriber')
+        super().__init__('subscriber_py')
 
         self.data_buffer = defaultdict(list)
         self.msg_sizes = defaultdict(int)

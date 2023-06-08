@@ -3,11 +3,13 @@
 This repo is meant to serve as a testing rig for benchmarking network performance of the k4a publisher.
 
 ## Usage
+### Python subscriber
 After sourcing ros2 rolling installation, run :
 
 ```
-ros2 launch launch/test_launch.py
+ros2 launch launch/pubsub_py.py
 ```
+I got a throughput of around 270 MB/s using the above launch file.
 
 This should output the following result:
 ```
