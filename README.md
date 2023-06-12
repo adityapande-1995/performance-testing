@@ -129,7 +129,7 @@ With this, I got a throughput of 287 MB/s (approx 16.81 GB/min). You should get 
 
 We can start mininet in a basic setup. Open a new terminal and run: 
 ```
-sudo mn --link tc,bw=2048000,delay=1ms
+sudo mn --link tc,bw=1000,delay=1ms
 ```
 The bandwidth has to be supplied in Mbit/s. This starts a minimal simulated network between 2 hosts h1 and h2.
 We can run the publisher on one host and the subscriber on the other.
@@ -139,5 +139,3 @@ In the mininet prompt, run :
 mininet> h1 . /opt/ros/rolling/setup.bash ; python3 ~/performance-testing/nodes/publisher.py &
 mininet> h2 . /opt/ros/rolling/setup.bash ; python3 ~/performance-testing/nodes/subscriber.py
 ```
-
-With these parameters, I was able to get a cumulative throughput of 15 MB/s, and it took 149s to complete, probably due to high packet drop.
