@@ -2,7 +2,7 @@
 
 This repo is meant to serve as a testing rig for benchmarking network performance of the k4a publisher.
 
-## Usage
+## Basic usage
 The setup here includes a k4a camera publisher, and 2 subscriber nodes, one written using rclpy, and the other using rclcpp.
 Effectively both of them do the same job, they subscriber to the pointcloud2 and image topics and record their size and timestamps.
 The launch scripts below use the python publisher at 30 Hz and one of the subscribers.
@@ -123,7 +123,7 @@ With this, I got a throughput of 287 MB/s (approx 16.81 GB/min). You should get 
 [subscriber-2] --------------
 ```
 
-## Using mininet
+## Testing over a simulated network using mininet
 
 [Mininet](https://github.com/mininet/mininet) is a network simulator.
 
@@ -131,12 +131,13 @@ We can start mininet in a basic setup. Open a new terminal and run:
 ```
 sudo mn --link tc,bw=2048000,delay=1ms
 ```
-The bandwidth has to be supplied in Mbit/s.
+The bandwidth has to be supplied in Mbit/s. This starts a minimal simulated network between 2 hosts h1 and h2.
+We can run the publisher on one host and the subscriber on the other.
 
-Then in the mininet prompt, run :
+In the mininet prompt, run :
 ```
 mininet> h1 . /opt/ros/rolling/setup.bash ; python3 ~/performance-testing/nodes/publisher.py &
-mininet> h2 . /opt/ros/rolling/setup.bash ; python3 ~/performance-testing/nodes/subscriber.py &
+mininet> h2 . /opt/ros/rolling/setup.bash ; python3 ~/performance-testing/nodes/subscriber.py
 ```
 
 With these parameters, I was able to get a cumulative throughput of 15 MB/s, and it took 149s to complete, probably due to high packet drop.
